@@ -11,6 +11,7 @@ app.add_middleware(
     allow_origins=["https://webincidents.parkerpeterman.com/"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 df = pd.read_csv("network_incidents.csv")
