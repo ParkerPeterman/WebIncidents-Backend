@@ -8,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://webincidents.parkerpeterman.com/"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -20,10 +20,10 @@ df['created_at'] = pd.to_datetime(df['created_at'])
 df['resolved_at'] = pd.to_datetime(df['resolved_at'])
 
 def calculate_mttr(df):
-    #MTTR DF that only brings rows where status = resolved
     resolved_df = df[df['status'] == 'Resolved'].copy()
-    #initialize array of resolution time values
     durations = resolved_df['resolved_at'] - resolved_df['created_at']
+
+    avg_Hours = 0.0 
 
     if not durations.empty:
         mttr_delta = durations.mean()
@@ -39,17 +39,22 @@ def read_root():
 
 @app.get("/metrics/summary")
 def get_summary():
-    """Returns high-level KPIs for the dashboard."""
-    total_incidents = len(df)
-    active_incidents = len(df[df['status'] != 'Resolved'])
-    global_mttr = calculate_mttr(df)
+    try:
+        """Returns high-level KPIs for the dashboard."""
+        total_incidents = len(df)
+        active_incidents = len(df[df['status'] != 'Resolved'])
+        global_mttr = calculate_mttr(df)
     
-    return {
-        "total_tickets": total_incidents,
-        "active_outages": active_incidents,
-        "mttr_hours": global_mttr,
-        "system_health": "Stable" if active_incidents < 50 else "Degraded"
-    }
+        return {
+            "total_tickets": total_incidents,
+            "active_outages": active_incidents,
+            "mttr_hours": global_mttr,
+            "system_health": "Stable" if active_incidents < 50 else "Degraded"
+        }
+    except Exception as e:
+        print(f"Error in summary endpoint: {e}")
+        return {"error": str(e)}
+
 
 @app.get("/incidents/active")
 def get_active_incidents():
@@ -73,11 +78,26 @@ def get_chart_data():
         
     return combined_data
 
+@app.get("/metrics/trends")
+def get_trend_data():
+    trend_df = df.copy()
+    trend_df.set_index('created_at', inplace=True)
+
+    daily_groups = trend_df.groupby([pd.Grouper(freq='D'), 'service_name']).size().unstack(fill_value=0)
+
+    trend_data=[]
+    for date, row in daily_groups.iterrows():
+        data_point = {"date": date.strftime('%Y-%m-%d')}
+        data_point.update(row.to_dict())
+        trend_data.append(data_point)
+    
+    return {
+        "data": trend_data,
+        "categories": daily_groups.columns.tolist()
+    }
 
 import os
 
 if __name__ == "__main__":
     import uvicorn
-    # This looks for the "PORT" environment variable provided by the cloud host
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
