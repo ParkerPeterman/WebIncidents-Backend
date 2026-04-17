@@ -96,6 +96,20 @@ def get_trend_data():
         "categories": daily_groups.columns.tolist()
     }
 
+@app.get("/metrics/heatmap")
+def get_heatmap_data():
+    try: 
+        h_df = df.copy()
+        h_df['hour'] = h_df['created_at'].dt.hour
+        h_df['day_idx'] = h_df['created_at'].dt.dayofweek
+        
+        density = h_df.groupby(['day_idx', 'hour']).size().reset_index(name='value')
+        
+        return density.to_dict(orient='records') 
+    except Exception as e:
+        print(f"Heatmap Error: {e}")
+        return {"error": str(e)}
+
 import os
 
 if __name__ == "__main__":
