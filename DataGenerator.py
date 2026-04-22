@@ -10,7 +10,7 @@ def generate_mock_data(num_records=100):
     #Provides options for possible services, issues,, and statuses
     services = ['Fiber-Backbone-East', 'Router-Group-A', 'Switch-Maize-04', 'Cloud-Gateway-Primary', 'VoIP-Server-Hutch']
     issue_types = ['Hardware Failure', 'Latency Spike', 'Packet Loss', 'Power Outage', 'Configuration Error']
-    statuses = ['Resolved', 'In-Progress', 'Open'] #Resolved listed multiple times to weight data in that direction
+    statuses = ['Resolved', 'In-Progress', 'Open'] 
 
     data = []
 

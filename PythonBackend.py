@@ -4,6 +4,8 @@ from fastapi import FastAPI
 import pydantic as pyd 
 from fastapi.middleware.cors import CORSMiddleware
 
+
+#Creating API Functionality and setting who it can be accessed by
 app = FastAPI() 
 
 app.add_middleware(
@@ -14,17 +16,22 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+# Reading in from data file and converting necessary columns to date time format for functions
 df = pd.read_csv("network_incidents.csv")
 
 df['created_at'] = pd.to_datetime(df['created_at'])
 df['resolved_at'] = pd.to_datetime(df['resolved_at'])
 
+
+#Calculating MTTR
 def calculate_mttr(df):
+    #Taking only data data points in which the ticket is resolved and then calculating for its duration
     resolved_df = df[df['status'] == 'Resolved'].copy()
     durations = resolved_df['resolved_at'] - resolved_df['created_at']
 
     avg_Hours = 0.0 
 
+    #As long as there are closed tickets it will calculate the average of all the durations
     if not durations.empty:
         mttr_delta = durations.mean()
         avg_Hours = mttr_delta.total_seconds() / 3600
@@ -40,7 +47,7 @@ def read_root():
 @app.get("/metrics/summary")
 def get_summary():
     try:
-        """Returns high-level KPIs for the dashboard."""
+        # Creating values and outputting them for the API
         total_incidents = len(df)
         active_incidents = len(df[df['status'] != 'Resolved'])
         global_mttr = calculate_mttr(df)
@@ -58,26 +65,30 @@ def get_summary():
 
 @app.get("/incidents/active")
 def get_active_incidents():
-    """Returns a list of all current outages."""
+    # Returns a count of the records not marked as Resolved
     active_df = df[df['status'] != 'Resolved']
     # .to_dict('records') turns the DataFrame rows into a list of JSON objects
     return active_df.to_dict(orient='records')
 
 @app.get("/metrics/chart")
 def get_chart_data():
+    # Creates a count of records by category as well as a count of resolved records by category
     total_counts = df['service_name'].value_counts()
     resolved_counts = df[df['status'] == 'Resolved']['service_name'].value_counts()
     
     combined_data = []
+    # Adds necessary data by to array to be past through the API
     for service in total_counts.index:
         combined_data.append({
             "name": service,
+            #Turns values inot ints for compatabiltiy
             "total": int(total_counts[service]),
             "resolved": int(resolved_counts.get(service, 0))
         })
         
     return combined_data
 
+#Creates copy data fram specifically to track the creation dates of each ticket for graphical usage
 @app.get("/metrics/trends")
 def get_trend_data():
     trend_df = df.copy()
@@ -96,6 +107,7 @@ def get_trend_data():
         "categories": daily_groups.columns.tolist()
     }
 
+# Groups ticket creation yb day of week and hour of day to output as heatmap
 @app.get("/metrics/heatmap")
 def get_heatmap_data():
     try: 
